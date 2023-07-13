@@ -1,11 +1,12 @@
 from umqtt.simple import MQTTClient
 from machine import Pin, reset, unique_id
 import utime
+
 from dht import DHT22
 from ubinascii import hexlify
 
 # MQTT topic
-TOPIC = b"project.test.eoi"
+TOPIC = b"iot-project"
 
 # Pin assignments
 TRIGGER_PIN = 13
@@ -50,29 +51,35 @@ def measure_distance():
     distance = pulse_duration * 0.0343 / 2
     return distance
 
+# Function to measure temperature and humidity using DHT sensor
+def measure_temperature_humidity():
+    dht_sensor.measure()
+    temperature = dht_sensor.temperature()
+    humidity = dht_sensor.humidity()
+    return temperature, humidity
+
+# Callback function for MQTT message received event
+def mqtt_callback(topic, msg):
+    if topic == TOPIC:
+        if msg == b"measurements":
+            distance = measure_distance()
+            if distance < 10:
+                temperature, humidity = measure_temperature_humidity()
+                message = "Distance: " + str(round(distance)) + " cm | Temperature: " + str(temperature) + "°C | Humidity: " + str(humidity) + "%"
+                mqtt_client.publish(TOPIC, message)
+                print("Measurements sent:\n", message)
+                led.on()
+                utime.sleep(5)
+                led.off()
+
+# Set the MQTT callback function
+mqtt_client.set_callback(mqtt_callback)
+
 def main():
     mqtt_client.connect()
-
+    mqtt_client.subscribe(TOPIC)  # Subscribe to the MQTT topic
     while True:
-        mqtt_client.check_msg()
-
-        dht_sensor.measure()
-        temperature = dht_sensor.temperature()
-        humidity = dht_sensor.humidity()
-
-        mqtt_client.publish(TOPIC, "Temperature: {} °C, Humidity: {}%".format(temperature, humidity))
-        print("Temperature sent...")
-
-        distance = measure_distance()
-
-        if distance < 10:
-            led.on()
-            mqtt_client.publish(TOPIC, "Distance: {} cm".format(distance))
-            print("Movement detected! Message sent...")
-            utime.sleep(5)  # Keep the LED on for 5 seconds
-            led.off()
-
-        utime.sleep_ms(5000)  # Check for distance every 5 seconds
+        mqtt_client.check_msg()  # Check for MQTT messages
 
 if __name__ == "__main__":
     main()
