@@ -65,7 +65,7 @@ def mqtt_callback(topic, msg):
             distance = measure_distance()
             if distance < 10:
                 temperature, humidity = measure_temperature_humidity()
-                message = "Distance: " + str(round(distance)) + " cm | Temperature: " + str(temperature) + "°C | Humidity: " + str(humidity) + "%"
+                message = "Distance: " + str(round(distance)) + " cm | Temperature: " + str(temperature) + "C | Humidity: " + str(humidity) + "%"
                 mqtt_client.publish(TOPIC, message)
                 print("Measurements sent:\n", message)
                 led.on()
